@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  vietnam-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vietnam-admin-api
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - GIN_MODE=release
+      - DATA_PATH=/root/data
+    volumes:
+      # Mount JSON data files (if you want to update them without rebuilding)
+      - ./province.json:/root/data/province.json:ro
+      - ./ward.json:/root/data/ward.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vietnam-api.rule=Host(`api.vietnam-admin.local`)"
+      - "traefik.http.services.vietnam-api.loadbalancer.server.port=8080"
+    networks:
+      - vietnam-network
+
+  # Optional: Redis for caching (if you want to add caching later)
+  redis:
+    image: redis:7-alpine
+    container_name: vietnam-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - vietnam-network
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: vietnam-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - vietnam-api
+    restart: unless-stopped
+    networks:
+      - vietnam-network
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  vietnam-network:
+    driver: bridge 
