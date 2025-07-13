@@ -77,10 +77,10 @@ jobs:
           echo ""
           echo "====================="
           
-          # Generate HMAC SHA256 signature (using empty secret - what webhook server expects)
-          WEBHOOK_SECRET=""
-          echo "=== USING EMPTY SECRET (webhook server expects this) ==="
-          echo "Secret: '$WEBHOOK_SECRET'"
+          # Generate HMAC SHA256 signature (using actual secret from GitHub)
+          WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}"
+          echo "=== USING WEBHOOK SECRET FROM GITHUB ==="
+          echo "Secret configured: ${{ secrets.WEBHOOK_SECRET != '' && 'YES' || 'NO' }}"
           echo "Secret length: ${#WEBHOOK_SECRET}"
           echo "========================================================"
           
