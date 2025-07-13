@@ -1,0 +1,61 @@
+name: Webhook Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  deploy:
+    name: Deploy via Webhook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via Webhook
+        run: |
+          echo "🚀 Starting webhook deployment..."
+          
+          # Create payload
+          PAYLOAD="{\"ref\":\"${{ github.ref }}\",\"repository\":{\"name\":\"${{ github.event.repository.name }}\",\"full_name\":\"${{ github.repository }}\"},\"head_commit\":{\"id\":\"${{ github.sha }}\",\"message\":\"${{ github.event.head_commit.message || 'Manual deployment' }}\"}}"
+          
+          echo "=== PAYLOAD ==="
+          echo "$PAYLOAD"
+          echo "==============="
+          
+          # Generate signature
+          WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}"
+          if [ -z "$WEBHOOK_SECRET" ]; then
+            echo "❌ WEBHOOK_SECRET not found"
+            exit 1
+          fi
+          
+          echo "$PAYLOAD" > payload.json
+          SIGNATURE=$(openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" payload.json | cut -d' ' -f2)
+          
+          echo "=== SENDING REQUEST ==="
+          echo "URL: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}"
+          echo "Signature: sha256=$SIGNATURE"
+          echo "======================="
+          
+          # Send request
+          RESPONSE=$(curl -w "\n%{http_code}" -X POST "${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: sha256=$SIGNATURE" \
+            -H "X-GitHub-Event: push" \
+            -d @payload.json)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "=== RESPONSE ==="
+          echo "Status: $HTTP_CODE"
+          echo "Body: $BODY"
+          echo "================"
+          
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+            exit 1
+          fi 
