@@ -14,9 +14,6 @@ on:
           - staging
           - production
 
-env:
-  WEBHOOK_URL: https://webhook1.iceteadev.site/deploy
-
 jobs:
   deploy:
     name: Deploy via Webhook
@@ -39,7 +36,7 @@ jobs:
       - name: Deploy via Webhook
         uses: distributhor/workflow-webhook@v2
         with:
-          webhook_url: ${{ env.WEBHOOK_URL }}
+          webhook_url: https://webhook1.iceteadev.site/deploy
           webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
           data: |
             {
@@ -108,6 +105,5 @@ jobs:
           echo "- **Repository**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY  
           echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Webhook URL**: ${{ env.WEBHOOK_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Working Directory**: ${{ env.WORK_DIR }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Deployment Time**: $(date)" >> $GITHUB_STEP_SUMMARY 
