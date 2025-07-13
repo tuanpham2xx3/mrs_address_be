@@ -23,27 +23,28 @@ jobs:
           echo "$PAYLOAD"
           echo "==============="
           
-          # Generate signature
-          WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}"
-          if [ -z "$WEBHOOK_SECRET" ]; then
-            echo "❌ WEBHOOK_SECRET not found"
-            exit 1
-          fi
+          # Generate signature - Hard-coded values từ hướng dẫn
+          WEBHOOK_SECRET="du_an_cua_tuan"
+          WEBHOOK_URL="https://webhook1.iceteadev.site/deploy"
           
           echo -n "$PAYLOAD" > payload.json
           SIGNATURE_HASH=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)
           SIGNATURE="sha256=$SIGNATURE_HASH"
           
           echo "=== SENDING REQUEST ==="
-          echo "URL: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}"
+          echo "URL: $WEBHOOK_URL"
+          echo "Secret: $WEBHOOK_SECRET"
           echo "Signature: $SIGNATURE"
           echo "======================="
           
-          # Send request
-          RESPONSE=$(curl -w "\n%{http_code}" -X POST "${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}" \
+          # Send request với đầy đủ headers theo hướng dẫn
+          DELIVERY_ID="github-actions-$(date +%s)"
+          RESPONSE=$(curl -w "\n%{http_code}" -X POST "$WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -H "X-Hub-Signature-256: $SIGNATURE" \
             -H "X-GitHub-Event: push" \
+            -H "X-GitHub-Delivery: $DELIVERY_ID" \
+            -H "User-Agent: GitHub-Hookshot/actions" \
             -d "$PAYLOAD")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
