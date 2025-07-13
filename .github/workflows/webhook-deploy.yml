@@ -16,34 +16,8 @@ jobs:
         run: |
           echo "🚀 Starting webhook deployment..."
           
-          # Create payload matching test script format
-          PAYLOAD=$(cat <<EOF
-{
-  "ref": "${{ github.ref }}",
-  "repository": {
-    "name": "${{ github.event.repository.name }}",
-    "full_name": "${{ github.repository }}",
-    "html_url": "${{ github.event.repository.html_url }}",
-    "clone_url": "${{ github.event.repository.clone_url }}",
-    "default_branch": "${{ github.event.repository.default_branch }}"
-  },
-  "pusher": {
-    "name": "${{ github.event.pusher.name || github.actor }}",
-    "email": "${{ github.event.pusher.email || github.actor }}@users.noreply.github.com"
-  },
-  "head_commit": {
-    "id": "${{ github.sha }}",
-    "message": "${{ github.event.head_commit.message || 'Manual deployment' }}",
-    "timestamp": "${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}",
-    "url": "${{ github.event.head_commit.url || github.event.repository.html_url }}/commit/${{ github.sha }}",
-    "author": {
-      "name": "${{ github.event.head_commit.author.name || github.actor }}",
-      "email": "${{ github.event.head_commit.author.email || github.actor }}@users.noreply.github.com"
-    }
-  }
-}
-EOF
-)
+          # Create payload - single line format for stability
+          PAYLOAD='{"ref":"${{ github.ref }}","repository":{"name":"${{ github.event.repository.name }}","full_name":"${{ github.repository }}","html_url":"${{ github.event.repository.html_url }}","clone_url":"${{ github.event.repository.clone_url }}","default_branch":"${{ github.event.repository.default_branch }}"},"pusher":{"name":"${{ github.event.pusher.name || github.actor }}","email":"${{ github.event.pusher.email || github.actor }}@users.noreply.github.com"},"head_commit":{"id":"${{ github.sha }}","message":"${{ github.event.head_commit.message || 'Manual deployment' }}","timestamp":"${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}","url":"${{ github.event.head_commit.url || github.event.repository.html_url }}/commit/${{ github.sha }}","author":{"name":"${{ github.event.head_commit.author.name || github.actor }}","email":"${{ github.event.head_commit.author.email || github.actor }}@users.noreply.github.com"}}}'
           
           echo "=== PAYLOAD ==="
           echo "$PAYLOAD"
