@@ -63,7 +63,8 @@ jobs:
             "deployment": {
               "environment": "${{ env.DEPLOY_ENV }}",
               "image_tag": "${{ github.ref == 'refs/heads/main' && 'latest' || github.ref_name }}-${{ github.sha }}",
-              "container_name": "vietnam-admin-api-${{ env.DEPLOY_ENV }}"
+              "container_name": "mrs_address_be-${{ env.DEPLOY_ENV }}",
+              "registry_image": "ghcr.io/tuanpham2xx3/mrs_address_be:${{ github.ref == 'refs/heads/main' && 'latest' || github.ref_name }}-${{ github.sha }}"
             }
           }
           EOF
