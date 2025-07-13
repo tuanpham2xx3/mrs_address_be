@@ -132,47 +132,48 @@ jobs:
 
   # ===== DEPLOYMENT JOBS =====
 
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [build, docker-build]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment: staging
-    steps:
-      - name: Deploy via Webhook
-        uses: distributhor/workflow-webhook@v3
-        with:
-          webhook_url: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}
-          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
-          data: |
-            {
-              "environment": "staging",
-              "repository": "${{ github.repository }}",
-              "branch": "${{ github.ref_name }}",
-              "commit": "${{ github.sha }}",
-              "image_tag": "${{ github.ref_name }}-${{ github.sha }}"
-            }
+  # Deployment is handled by webhook-deploy.yml (stable solution)
+  # deploy-staging:
+  #   name: Deploy to Staging
+  #   runs-on: ubuntu-latest
+  #   needs: [build, docker-build]
+  #   if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+  #   environment: staging
+  #   steps:
+  #     - name: Deploy via Webhook
+  #       uses: distributhor/workflow-webhook@v3
+  #       with:
+  #         webhook_url: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}
+  #         webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+  #         data: |
+  #           {
+  #             "environment": "staging",
+  #             "repository": "${{ github.repository }}",
+  #             "branch": "${{ github.ref_name }}",
+  #             "commit": "${{ github.sha }}",
+  #             "image_tag": "${{ github.ref_name }}-${{ github.sha }}"
+  #           }
 
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: [build, docker-build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-    steps:
-      - name: Deploy via Webhook
-        uses: distributhor/workflow-webhook@v3
-        with:
-          webhook_url: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}
-          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
-          data: |
-            {
-              "environment": "production",
-              "repository": "${{ github.repository }}",
-              "branch": "${{ github.ref_name }}",
-              "commit": "${{ github.sha }}",
-              "image_tag": "latest"
-            }
+  # deploy-production:
+  #   name: Deploy to Production
+  #   runs-on: ubuntu-latest
+  #   needs: [build, docker-build]
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   environment: production
+  #   steps:
+  #     - name: Deploy via Webhook
+  #       uses: distributhor/workflow-webhook@v3
+  #       with:
+  #         webhook_url: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}
+  #         webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+  #         data: |
+  #           {
+  #             "environment": "production",
+  #             "repository": "${{ github.repository }}",
+  #             "branch": "${{ github.ref_name }}",
+  #             "commit": "${{ github.sha }}",
+  #             "image_tag": "latest"
+  #           }
 
   # ===== WEBHOOK TEST =====
 
