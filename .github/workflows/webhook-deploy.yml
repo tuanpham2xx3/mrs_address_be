@@ -1,8 +1,9 @@
-name: Webhook Deployment
+name: Webhook Deployment (Manual)
 
 on:
-  push:
-    branches: [ main, develop ]
+  # Removed automatic push trigger to avoid conflict with ci-cd.yml
+  # push:
+  #   branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       environment:
