@@ -77,12 +77,12 @@ jobs:
           echo ""
           echo "====================="
           
-          # Generate HMAC SHA256 signature (using hardcoded secret)
-          WEBHOOK_SECRET="du_an_cua_tuan"
-          echo "=== USING HARDCODED SECRET ==="
-          echo "Secret: $WEBHOOK_SECRET"
+          # Generate HMAC SHA256 signature (using empty secret - what webhook server expects)
+          WEBHOOK_SECRET=""
+          echo "=== USING EMPTY SECRET (webhook server expects this) ==="
+          echo "Secret: '$WEBHOOK_SECRET'"
           echo "Secret length: ${#WEBHOOK_SECRET}"
-          echo "=========================="
+          echo "========================================================"
           
           SIGNATURE="sha256=$(cat webhook_payload.json | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)"
           
