@@ -79,6 +79,17 @@ jobs:
           
           # Generate HMAC SHA256 signature (matching test script)
           WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}"
+          echo "=== DEBUG SECRET ==="
+          echo "Secret length: ${#WEBHOOK_SECRET}"
+          if [ -z "$WEBHOOK_SECRET" ]; then
+            echo "❌ WEBHOOK_SECRET is empty! Using fallback..."
+            WEBHOOK_SECRET="du_an_cua_tuan"
+          else
+            echo "✅ WEBHOOK_SECRET is set"
+          fi
+          echo "Final secret length: ${#WEBHOOK_SECRET}"
+          echo "=================="
+          
           SIGNATURE="sha256=$(cat webhook_payload.json | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)"
           
           echo "Generated signature: $SIGNATURE"
