@@ -35,8 +35,8 @@ jobs:
 
       - name: Deploy via Webhook
         run: |
-          # Create webhook payload
-          cat > webhook_payload.json << 'EOF'
+          # Create webhook payload (matching test script format)
+          cat > webhook_payload.json << EOF
           {
             "ref": "${{ github.ref }}",
             "repository": {
@@ -68,16 +68,24 @@ jobs:
           }
           EOF
           
+          # Debug payload
+          echo "=== DEBUG PAYLOAD ==="
+          cat webhook_payload.json
+          echo ""
+          echo "====================="
+          
           # Generate HMAC SHA256 signature (matching test script)
-          WEBHOOK_SECRET="du_an_cua_tuan"
+          WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}"
           SIGNATURE="sha256=$(cat webhook_payload.json | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)"
           
-          # Send webhook request
+          echo "Generated signature: $SIGNATURE"
+          
+          # Send webhook request (matching test script headers)
           RESPONSE=$(curl -w "\n%{http_code}" -X POST https://webhook1.iceteadev.site/deploy \
             -H "Content-Type: application/json" \
             -H "X-Hub-Signature-256: $SIGNATURE" \
-            -H "X-GitHub-Event: push" \
-            -H "X-GitHub-Delivery: ${{ github.run_id }}-${{ github.run_number }}" \
+            -H "X-Github-Event: push" \
+            -H "X-Github-Delivery: ${{ github.run_id }}-${{ github.run_number }}" \
             -H "User-Agent: GitHub-Hookshot/${{ github.run_id }}" \
             -d @webhook_payload.json)
           
