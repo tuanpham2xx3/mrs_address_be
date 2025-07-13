@@ -12,10 +12,10 @@ services:
       - PORT=8100
       - GIN_MODE=release
       - DATA_PATH=/root/data
-    volumes:
-      # Mount JSON data files (if you want to update them without rebuilding)
-      - ./data/province.json:/root/data/province.json:ro
-      - ./data/ward.json:/root/data/ward.json:ro
+    # volumes:
+    #   # Mount JSON data files (if you want to update them without rebuilding)
+    #   - ./data/province.json:/root/data/province.json:ro
+    #   - ./data/ward.json:/root/data/ward.json:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8100/health"]
