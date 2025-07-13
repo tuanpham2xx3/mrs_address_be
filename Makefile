@@ -74,11 +74,11 @@ docker-run: docker
 	@echo "🐳 Running Docker container..."
 	@docker run -d \
 		--name vietnam-api \
-		-p 8080:8080 \
+		-p 8100:8100 \
 		-v $(PWD)/province.json:/root/data/province.json:ro \
 		-v $(PWD)/ward.json:/root/data/ward.json:ro \
 		vietnam-admin-api:latest
-	@echo "✅ Container started: http://localhost:8080"
+	@echo "✅ Container started: http://localhost:8100"
 
 # Stop Docker container
 docker-stop:
@@ -90,7 +90,7 @@ docker-stop:
 deploy:
 	@echo "🚀 Deploying with docker-compose..."
 	@docker-compose up -d --build
-	@echo "✅ Deployed! Check: http://localhost:8080"
+	@echo "✅ Deployed! Check: http://localhost:8100"
 
 # Stop deployment
 deploy-stop:
@@ -104,12 +104,12 @@ logs:
 # Check API health
 health:
 	@echo "🏥 Checking API health..."
-	@curl -s http://localhost:8080/health | jq '.' || echo "API not responding"
+	@curl -s http://localhost:8100/health | jq '.' || echo "API not responding"
 
 # Load test (requires hey: go install github.com/rakyll/hey@latest)
 load-test:
 	@echo "⚡ Running load test..."
-	@hey -n 1000 -c 10 http://localhost:8080/api/v1/provinces
+	@hey -n 1000 -c 10 http://localhost:8100/api/v1/provinces
 
 # Development workflow
 dev: clean setup run

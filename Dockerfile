@@ -34,8 +34,8 @@ WORKDIR /root/
 COPY --from=builder /app/main .
 
 # Copy data files
-COPY --from=builder /app/province.json ./data/
-COPY --from=builder /app/ward.json ./data/
+COPY --from=builder /app/data/province.json ./data/
+COPY --from=builder /app/data/ward.json ./data/
 
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /root/
@@ -44,11 +44,11 @@ RUN chown -R appuser:appgroup /root/
 USER appuser
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8100
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8100/health || exit 1
 
 # Run the application
 CMD ["./main"] 

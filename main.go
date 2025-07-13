@@ -18,7 +18,7 @@ import (
 
 const (
 	Version         = "1.0.0"
-	DefaultPort     = "8080"
+	DefaultPort     = "8100"
 	DefaultDataPath = "./data"
 )
 
