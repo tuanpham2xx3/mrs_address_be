@@ -30,20 +30,20 @@ jobs:
             exit 1
           fi
           
-          echo "$PAYLOAD" > payload.json
-          SIGNATURE=$(openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" payload.json | cut -d' ' -f2)
+          echo -n "$PAYLOAD" > payload.json
+          SIGNATURE="sha256=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary | xxd -p -c 256)"
           
           echo "=== SENDING REQUEST ==="
           echo "URL: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}"
-          echo "Signature: sha256=$SIGNATURE"
+          echo "Signature: $SIGNATURE"
           echo "======================="
           
           # Send request
           RESPONSE=$(curl -w "\n%{http_code}" -X POST "${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}" \
             -H "Content-Type: application/json" \
-            -H "X-Hub-Signature-256: sha256=$SIGNATURE" \
+            -H "X-Hub-Signature-256: $SIGNATURE" \
             -H "X-GitHub-Event: push" \
-            -d @payload.json)
+            -d "$PAYLOAD")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n -1)
