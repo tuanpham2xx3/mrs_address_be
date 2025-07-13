@@ -84,7 +84,28 @@ jobs:
           echo "Secret length: ${#WEBHOOK_SECRET}"
           echo "========================================================"
           
-          SIGNATURE="sha256=$(cat webhook_payload.json | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)"
+          # Use Go to generate signature (consistent with webhook server)
+          cat > gen_signature.go << 'EOF'
+          package main
+          import (
+            "crypto/hmac"
+            "crypto/sha256"
+            "encoding/hex"
+            "fmt"
+            "io"
+            "os"
+          )
+          func main() {
+            secret := os.Args[1]
+            h := hmac.New(sha256.New, []byte(secret))
+            if data, err := io.ReadAll(os.Stdin); err == nil {
+              h.Write(data)
+              fmt.Print(hex.EncodeToString(h.Sum(nil)))
+            }
+          }
+          EOF
+          
+          SIGNATURE="sha256=$(go run gen_signature.go "$WEBHOOK_SECRET" < webhook_payload.json)"
           
           echo "Generated signature: $SIGNATURE"
           
