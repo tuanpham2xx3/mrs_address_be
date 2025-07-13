@@ -35,87 +35,69 @@ jobs:
 
       - name: Deploy via Webhook
         run: |
-          # Create webhook payload (compact format like test script)
-          cat > webhook_payload_raw.json << EOF
+          # Create GitHub webhook payload (standard format)
+          cat > webhook_payload.json << EOF
           {
             "ref": "${{ github.ref }}",
             "repository": {
               "name": "${{ github.event.repository.name }}",
               "full_name": "${{ github.repository }}",
-              "html_url": "${{ github.event.repository.html_url }}",
-              "clone_url": "${{ github.event.repository.clone_url }}",
+              "owner": {
+                "login": "${{ github.repository_owner }}"
+              },
               "default_branch": "${{ github.event.repository.default_branch }}"
-            },
-            "pusher": {
-              "name": "${{ github.actor }}",
-              "email": "${{ github.actor }}@users.noreply.github.com"
             },
             "head_commit": {
               "id": "${{ github.sha }}",
-              "message": "${{ github.event.head_commit.message }}",
-              "timestamp": "${{ github.event.head_commit.timestamp }}",
-              "url": "${{ github.event.head_commit.url }}",
+              "message": "${{ github.event.head_commit.message || 'Manual deployment' }}",
               "author": {
-                "name": "${{ github.event.head_commit.author.name }}",
-                "email": "${{ github.event.head_commit.author.email }}"
-              }
-            },
-            "deployment": {
-              "environment": "${{ env.DEPLOY_ENV }}",
-              "image_tag": "${{ github.ref == 'refs/heads/main' && 'latest' || github.ref_name }}-${{ github.sha }}",
-              "container_name": "mrs_address_be-${{ env.DEPLOY_ENV }}",
-              "registry_image": "ghcr.io/tuanpham2xx3/mrs_address_be:${{ github.ref == 'refs/heads/main' && 'latest' || github.ref_name }}-${{ github.sha }}"
+                "name": "${{ github.event.head_commit.author.name || github.actor }}",
+                "email": "${{ github.event.head_commit.author.email || format('{0}@users.noreply.github.com', github.actor) }}"
+              },
+              "modified": [],
+              "added": [],
+              "removed": []
             }
           }
           EOF
-          
-          # Convert to compact JSON (no whitespace)
-          cat webhook_payload_raw.json | jq -c . > webhook_payload.json
           
           # Debug payload
-          echo "=== DEBUG PAYLOAD ==="
-          cat webhook_payload.json
-          echo ""
-          echo "====================="
+          echo "=== WEBHOOK PAYLOAD ==="
+          cat webhook_payload.json | jq .
+          echo "======================="
           
-          # Generate HMAC SHA256 signature (using correct secret for webhook server)
-          WEBHOOK_SECRET="du_an_cua_tuan"
-          echo "=== USING CORRECT SECRET FOR WEBHOOK SERVER ==="
-          echo "Secret: '$WEBHOOK_SECRET'"
+          # Generate HMAC SHA256 signature (theo chuẩn WEBHOOK_CI_CD_GUIDE.md)
+          WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}"
+          if [ -z "$WEBHOOK_SECRET" ]; then
+            echo "❌ WEBHOOK_SECRET not found in GitHub secrets"
+            exit 1
+          fi
+          
+          echo "=== SIGNATURE GENERATION ==="
           echo "Secret length: ${#WEBHOOK_SECRET}"
-          echo "========================================================"
           
-          # Use Go to generate signature (consistent with webhook server)
-          cat > gen_signature.go << 'EOF'
-          package main
-          import (
-            "crypto/hmac"
-            "crypto/sha256"
-            "encoding/hex"
-            "fmt"
-            "io"
-            "os"
-          )
-          func main() {
-            secret := os.Args[1]
-            h := hmac.New(sha256.New, []byte(secret))
-            if data, err := io.ReadAll(os.Stdin); err == nil {
-              h.Write(data)
-              fmt.Print(hex.EncodeToString(h.Sum(nil)))
-            }
-          }
-          EOF
+          # Use openssl to generate signature (chuẩn GitHub webhook)
+          SIGNATURE=$(echo -n "$(cat webhook_payload.json)" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)
+          FULL_SIGNATURE="sha256=$SIGNATURE"
           
-          SIGNATURE="sha256=$(go run gen_signature.go "$WEBHOOK_SECRET" < webhook_payload.json)"
+          echo "Generated signature: $FULL_SIGNATURE"
+          echo "==============================="
           
-          echo "Generated signature: $SIGNATURE"
+          # Send webhook request với headers chuẩn GitHub
+          echo "=== SENDING WEBHOOK REQUEST ==="
+          echo "URL: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}"
+          echo "Headers:"
+          echo "  Content-Type: application/json"
+          echo "  X-Hub-Signature-256: $FULL_SIGNATURE"
+          echo "  X-GitHub-Event: push"
+          echo "  X-GitHub-Delivery: ${{ github.run_id }}-${{ github.run_number }}"
+          echo "==============================="
           
-          # Send webhook request (matching test script headers)
-          RESPONSE=$(curl -w "\n%{http_code}" -X POST https://webhook1.iceteadev.site/deploy \
+          RESPONSE=$(curl -w "\n%{http_code}" -X POST "${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}" \
             -H "Content-Type: application/json" \
-            -H "X-Hub-Signature-256: $SIGNATURE" \
-            -H "X-Github-Event: push" \
-            -H "X-Github-Delivery: ${{ github.run_id }}-${{ github.run_number }}" \
+            -H "X-Hub-Signature-256: $FULL_SIGNATURE" \
+            -H "X-GitHub-Event: push" \
+            -H "X-GitHub-Delivery: ${{ github.run_id }}-${{ github.run_number }}" \
             -H "User-Agent: GitHub-Hookshot/${{ github.run_id }}" \
             -d @webhook_payload.json)
           
@@ -123,8 +105,10 @@ jobs:
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n -1)
           
+          echo "=== WEBHOOK RESPONSE ==="
           echo "HTTP Status: $HTTP_CODE"
           echo "Response Body: $BODY"
+          echo "========================"
           
           # Check if request was successful
           if [ "$HTTP_CODE" -eq 200 ]; then
@@ -137,6 +121,19 @@ jobs:
             echo "❌ Webhook deployment failed!"
             echo "HTTP Status: $HTTP_CODE"
             echo "Response: $BODY"
+            
+            # Debug information for signature issues
+            if [ "$HTTP_CODE" -eq 401 ]; then
+              echo ""
+              echo "=== SIGNATURE DEBUG INFO ==="
+              echo "This is likely a signature verification issue."
+              echo "Check:"
+              echo "1. WEBHOOK_SECRET in GitHub secrets matches webhook server"
+              echo "2. Webhook server implements signature verification correctly"
+              echo "3. Payload format matches expected GitHub webhook format"
+              echo "============================"
+            fi
+            
             exit 1
           fi
 
@@ -151,6 +148,8 @@ jobs:
           else
             HEALTH_URL="https://staging-api.vietnam-admin.your-domain.com/health"
           fi
+          
+          echo "Testing health endpoint: $HEALTH_URL"
           
           # Try to reach the health endpoint
           for i in {1..10}; do
@@ -177,4 +176,14 @@ jobs:
           echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Working Directory**: ${{ env.WORK_DIR }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployment Time**: $(date)" >> $GITHUB_STEP_SUMMARY 
+          echo "- **Deployment Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Webhook URL**: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Add debug info if deployment failed
+          if [ "$?" -ne 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## ⚠️ Debug Info" >> $GITHUB_STEP_SUMMARY
+            echo "- Check GitHub secrets: WEBHOOK_SECRET, WEBHOOK_URL" >> $GITHUB_STEP_SUMMARY
+            echo "- Verify webhook server signature verification" >> $GITHUB_STEP_SUMMARY
+            echo "- Check deployment commands configuration" >> $GITHUB_STEP_SUMMARY
+          fi 

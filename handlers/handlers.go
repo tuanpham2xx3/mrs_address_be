@@ -384,7 +384,7 @@ func (h *APIHandler) NotFound(c *gin.Context) {
 	h.respondWithError(c, http.StatusNotFound, "Endpoint not found")
 }
 
-// CORS preflight handler
+// Options handles CORS preflight requests
 func (h *APIHandler) Options(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
