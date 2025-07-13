@@ -35,8 +35,8 @@ jobs:
 
       - name: Deploy via Webhook
         run: |
-          # Create webhook payload (matching test script format)
-          cat > webhook_payload.json << EOF
+          # Create webhook payload (compact format like test script)
+          cat > webhook_payload_raw.json << EOF
           {
             "ref": "${{ github.ref }}",
             "repository": {
@@ -67,6 +67,9 @@ jobs:
             }
           }
           EOF
+          
+          # Convert to compact JSON (no whitespace)
+          cat webhook_payload_raw.json | jq -c . > webhook_payload.json
           
           # Debug payload
           echo "=== DEBUG PAYLOAD ==="
