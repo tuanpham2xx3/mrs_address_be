@@ -1,0 +1,124 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy via Webhook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ] || [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            echo "DEPLOY_ENV=production" >> $GITHUB_ENV
+            echo "WORK_DIR=/opt/mrs-address-be" >> $GITHUB_ENV
+          else
+            echo "DEPLOY_ENV=staging" >> $GITHUB_ENV
+            echo "WORK_DIR=/opt/mrs-address-be-staging" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy via Webhook
+        run: |
+          # Create GitHub webhook payload
+          PAYLOAD_JSON=$(cat << 'EOF'
+{
+  "ref": "${{ github.ref }}",
+  "repository": {
+    "name": "${{ github.event.repository.name }}",
+    "full_name": "${{ github.repository }}",
+    "owner": {
+      "login": "${{ github.repository_owner }}"
+    },
+    "default_branch": "${{ github.event.repository.default_branch }}"
+  },
+  "head_commit": {
+    "id": "${{ github.sha }}",
+    "message": "${{ github.event.head_commit.message || 'Manual deployment' }}",
+    "author": {
+      "name": "${{ github.event.head_commit.author.name || github.actor }}",
+      "email": "${{ github.event.head_commit.author.email || format('{0}@users.noreply.github.com', github.actor) }}"
+    }
+  }
+}
+EOF
+)
+          
+          # Write payload to file
+          echo "$PAYLOAD_JSON" | jq -c . > webhook_payload.json
+          
+          # Debug payload
+          echo "=== WEBHOOK PAYLOAD ==="
+          cat webhook_payload.json | jq .
+          echo "======================="
+          
+          # Generate HMAC SHA256 signature
+          WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}"
+          if [ -z "$WEBHOOK_SECRET" ]; then
+            echo "❌ WEBHOOK_SECRET not found in GitHub secrets"
+            exit 1
+          fi
+          
+          echo "=== SIGNATURE GENERATION ==="
+          echo "Secret length: ${#WEBHOOK_SECRET}"
+          
+          # Use openssl to generate signature
+          SIGNATURE=$(openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" webhook_payload.json | cut -d' ' -f2)
+          FULL_SIGNATURE="sha256=$SIGNATURE"
+          
+          echo "Generated signature: $FULL_SIGNATURE"
+          echo "==============================="
+          
+          # Send webhook request
+          echo "=== SENDING WEBHOOK REQUEST ==="
+          echo "URL: ${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}"
+          echo "Headers:"
+          echo "  Content-Type: application/json"
+          echo "  X-Hub-Signature-256: $FULL_SIGNATURE"
+          echo "  X-GitHub-Event: push"
+          echo "==============================="
+          
+          RESPONSE=$(curl -w "\n%{http_code}" -X POST "${{ secrets.WEBHOOK_URL || 'https://webhook1.iceteadev.site/deploy' }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: $FULL_SIGNATURE" \
+            -H "X-GitHub-Event: push" \
+            -H "X-GitHub-Delivery: ${{ github.run_id }}-${{ github.run_number }}" \
+            -H "User-Agent: GitHub-Hookshot/${{ github.run_id }}" \
+            -d @webhook_payload.json)
+          
+          # Parse response
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "=== WEBHOOK RESPONSE ==="
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          echo "========================"
+          
+          # Check if request was successful
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Webhook deployment successful!"
+            echo "Environment: ${{ env.DEPLOY_ENV }}"
+            echo "Repository: ${{ github.repository }}"
+            echo "Branch: ${{ github.ref_name }}"
+            echo "Commit: ${{ github.sha }}"
+          else
+            echo "❌ Webhook deployment failed!"
+            echo "HTTP Status: $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi 
