@@ -15,7 +15,7 @@ on:
           - production
 
 env:
-  WEBHOOK_URL: https://webhook1.iceteadev.site/
+  WEBHOOK_URL: https://webhook1.iceteadev.site/deploy
 
 jobs:
   deploy:

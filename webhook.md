@@ -2,17 +2,22 @@
 
 ## Overview
 This webhook service handles automated deployments for multiple types of projects (Go, Node.js, Python, PHP, Java, .NET, Docker) through GitHub webhooks. The service is deployed at `https://webhook1.iceteadev.site/` via Cloudflare Tunnel.
-PORT IN VPS RUN WEBHOOK SERVER IS 83008300
 
 ## Authentication
 All webhook requests must include:
 - GitHub webhook signature (`X-Hub-Signature-256` header)
 - Valid GitHub IP address (automatically verified)
 
-## Endpoint
+## Endpoints
 
+### Main Webhook Endpoint
 ```
-POST https://webhook1.iceteadev.site/
+POST https://webhook1.iceteadev.site/deploy
+```
+
+### Health Check Endpoint
+```
+GET https://webhook1.iceteadev.site/health
 ```
 
 ### Headers
@@ -52,7 +57,7 @@ WORK_DIR_COMPANY_GO_API=/opt/go-api
 2. Navigate to Settings > Webhooks
 3. Click "Add webhook"
 4. Configure the webhook:
-   - Payload URL: `https://webhook1.iceteadev.site/`
+   - Payload URL: `https://webhook1.iceteadev.site/deploy`
    - Content type: `application/json`
    - Secret: Your configured webhook secret
    - Events: Select "Just the push event"
@@ -102,7 +107,7 @@ jobs:
       - name: Trigger deployment webhook
         uses: distributhor/workflow-webhook@v2
         with:
-          url: https://webhook1.iceteadev.site/
+          url: https://webhook1.iceteadev.site/deploy
           secret: ${{ secrets.WEBHOOK_SECRET }}
 ```
 
@@ -201,7 +206,7 @@ User-Agent: GitHub-Hookshot/*
 You can use the provided test script:
 
 ```bash
-go run test/webhook_test.go https://webhook1.iceteadev.site/ your_webhook_secret
+go run test/webhook_test.go https://webhook1.iceteadev.site/deploy your_webhook_secret
 ```
 
 Or use curl:
@@ -213,7 +218,7 @@ PAYLOAD='{"ref":"refs/heads/main","repository":{"name":"test-repo"}}'
 SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)
 
 # Send test request
-curl -X POST https://webhook1.iceteadev.site/ \
+curl -X POST https://webhook1.iceteadev.site/deploy \
   -H "Content-Type: application/json" \
   -H "X-Hub-Signature-256: sha256=$SIGNATURE" \
   -H "X-GitHub-Event: push" \

@@ -88,7 +88,7 @@ DEPLOY_COMMANDS_OWNER_VIETNAM_ADMIN_API="cd /home/deploy/vietnam-admin-api;git p
 WORK_DIR_OWNER_VIETNAM_ADMIN_API="/home/deploy/vietnam-admin-api"
 DEPLOY_COMMANDS_OWNER_VIETNAM_ADMIN_API_STAGING="cd /home/deploy/vietnam-admin-api-staging;git pull origin develop;docker-compose -f docker-compose.staging.yml down;docker-compose -f docker-compose.staging.yml pull;docker-compose -f docker-compose.staging.yml up -d --build;docker system prune -f"
 WORK_DIR_OWNER_VIETNAM_ADMIN_API_STAGING="/home/deploy/vietnam-admin-api-staging"
-WEBHOOK_SECRET="your_webhook_secret_here"
+WEBHOOK_SECRET="du_an_cua_tuan"
 PORT="8300"
 ```
 
@@ -338,4 +338,4 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ---
 
-**Lưu ý**: Thay đổi các giá trị như `your-org`, `your_webhook_secret_here` theo thông tin thực tế của bạn. 
+**Lưu ý**: Đã cấu hình sẵn `WEBHOOK_SECRET=du_an_cua_tuan`. Thay đổi các giá trị như `your-org` theo thông tin thực tế của bạn. 

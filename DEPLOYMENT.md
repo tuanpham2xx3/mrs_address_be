@@ -49,8 +49,8 @@ Configure these secrets in your GitHub repository (Settings > Secrets and variab
 
 ```bash
 # Required secrets
-WEBHOOK_URL=https://webhook1.iceteadev.site/
-WEBHOOK_SECRET=your_webhook_secret_here
+WEBHOOK_URL=https://webhook1.iceteadev.site/deploy
+WEBHOOK_SECRET=du_an_cua_tuan
 
 # Optional: For custom registry
 REGISTRY_USERNAME=your_registry_username
@@ -83,8 +83,8 @@ DEPLOY_COMMANDS_OWNER_VIETNAM_ADMIN_API_STAGING=cd /opt/vietnam-admin-api-stagin
 WORK_DIR_OWNER_VIETNAM_ADMIN_API_STAGING=/opt/vietnam-admin-api-staging
 
 # Webhook server configuration
-WEBHOOK_SECRET=your_webhook_secret_here
-PORT=8080
+WEBHOOK_SECRET=du_an_cua_tuan
+PORT=8300
 ```
 
 ### 2. Server Directory Setup
