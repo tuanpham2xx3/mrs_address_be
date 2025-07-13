@@ -1,4 +1,4 @@
-name: Webhook Deployment
+name: Auto Webhook Deploy
 
 on:
   push:
