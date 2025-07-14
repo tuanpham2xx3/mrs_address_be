@@ -1,159 +1,28 @@
-name: Webhook Deploy
+# DISABLED - Webhook now handled in ci-cd.yml after docker build
+# This ensures Docker package is built before sending webhook
 
-on:
-  push:
-    branches: [ main, develop ]
+name: Webhook Deploy (DISABLED)
+
+# on:
+#   push:
+#     branches: [ main, develop ]
+
+# Webhook deployment is now handled in ci-cd.yml workflow
+# after docker-build job completes to ensure package is ready
 
 jobs:
-  deploy:
-    name: Deploy via Webhook
+  disabled:
+    name: This workflow is disabled
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get Docker Image Info
-        id: image_info
+      - name: Info
         run: |
-          echo "🐳 Getting Docker image information..."
-          
-          # Tạo image tags giống như trong ci-cd.yml
-          REGISTRY="ghcr.io"
-          IMAGE_NAME="${{ github.repository }}"
-          BRANCH_NAME="${{ github.ref_name }}"
-          COMMIT_SHA="${{ github.sha }}"
-          
-          # Xác định image tag dựa trên branch
-          if [ "$BRANCH_NAME" == "main" ]; then
-            IMAGE_TAG="latest"
-            VERSIONED_TAG="main-${COMMIT_SHA:0:7}"
-          else
-            IMAGE_TAG="$BRANCH_NAME"
-            VERSIONED_TAG="$BRANCH_NAME-${COMMIT_SHA:0:7}"
-          fi
-          
-          FULL_IMAGE_NAME="$REGISTRY/$IMAGE_NAME"
-          LATEST_IMAGE="$FULL_IMAGE_NAME:$IMAGE_TAG"
-          VERSIONED_IMAGE="$FULL_IMAGE_NAME:$VERSIONED_TAG"
-          
-          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
-          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "versioned_tag=$VERSIONED_TAG" >> $GITHUB_OUTPUT
-          echo "latest_image=$LATEST_IMAGE" >> $GITHUB_OUTPUT
-          echo "versioned_image=$VERSIONED_IMAGE" >> $GITHUB_OUTPUT
-          
-          echo "=== DOCKER IMAGE INFO ==="
-          echo "Registry: $REGISTRY"
-          echo "Image Name: $IMAGE_NAME"
-          echo "Latest Tag: $IMAGE_TAG"
-          echo "Versioned Tag: $VERSIONED_TAG"
-          echo "Latest Image: $LATEST_IMAGE"
-          echo "Versioned Image: $VERSIONED_IMAGE"
-          echo "========================="
-
-      - name: Deploy via Webhook
-        run: |
-          echo "🚀 Starting webhook deployment..."
-          
-          # Tạo payload với thông tin Docker image
-          PAYLOAD=$(cat <<EOF
-          {
-            "ref": "${{ github.ref }}",
-            "repository": {
-              "name": "${{ github.event.repository.name }}",
-              "full_name": "${{ github.repository }}",
-              "html_url": "${{ github.event.repository.html_url }}",
-              "clone_url": "${{ github.event.repository.clone_url }}",
-              "default_branch": "${{ github.event.repository.default_branch }}"
-            },
-            "pusher": {
-              "name": "${{ github.event.pusher.name || github.actor }}",
-              "email": "${{ github.event.pusher.email || github.actor }}@users.noreply.github.com"
-            },
-            "head_commit": {
-              "id": "${{ github.sha }}",
-              "message": "${{ github.event.head_commit.message || 'Manual deployment' }}",
-              "timestamp": "${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}",
-              "url": "${{ github.event.head_commit.url || github.event.repository.html_url }}/commit/${{ github.sha }}",
-              "author": {
-                "name": "${{ github.event.head_commit.author.name || github.actor }}",
-                "email": "${{ github.event.head_commit.author.email || github.actor }}@users.noreply.github.com"
-              }
-            },
-            "docker": {
-              "registry": "${{ steps.image_info.outputs.registry }}",
-              "image_name": "${{ steps.image_info.outputs.image_name }}",
-              "latest_tag": "${{ steps.image_info.outputs.image_tag }}",
-              "versioned_tag": "${{ steps.image_info.outputs.versioned_tag }}",
-              "latest_image": "${{ steps.image_info.outputs.latest_image }}",
-              "versioned_image": "${{ steps.image_info.outputs.versioned_image }}",
-              "pull_command": "docker pull ${{ steps.image_info.outputs.latest_image }}"
-            },
-            "deployment": {
-              "environment": "${{ github.ref_name == 'main' && 'production' || 'staging' }}",
-              "branch": "${{ github.ref_name }}",
-              "commit": "${{ github.sha }}",
-              "timestamp": "${{ github.event.repository.updated_at }}"
-            }
-          }
-          EOF
-          )
-          
-          # Minify JSON (remove newlines and extra spaces)
-          PAYLOAD=$(echo "$PAYLOAD" | jq -c .)
-          
-          echo "=== PAYLOAD ==="
-          echo "$PAYLOAD" | jq .
-          echo "==============="
-          
-          # Generate signature - Hard-coded values từ hướng dẫn
-          WEBHOOK_SECRET="du_an_cua_tuan"
-          WEBHOOK_URL="https://webhook1.iceteadev.site/deploy"
-          
-          echo -n "$PAYLOAD" > payload.json
-          SIGNATURE_HASH=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)
-          SIGNATURE="sha256=$SIGNATURE_HASH"
-          
-          echo "=== SENDING REQUEST ==="
-          echo "URL: $WEBHOOK_URL"
-          echo "Secret: $WEBHOOK_SECRET"
-          echo "Signature: $SIGNATURE"
-          echo "Docker Image: ${{ steps.image_info.outputs.latest_image }}"
-          echo "======================="
-          
-          # Send request với đầy đủ headers theo hướng dẫn
-          DELIVERY_ID="github-actions-$(date +%s)"
-          RESPONSE=$(curl -w "\n%{http_code}" -X POST "$WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -H "X-Hub-Signature-256: $SIGNATURE" \
-            -H "X-GitHub-Event: push" \
-            -H "X-GitHub-Delivery: $DELIVERY_ID" \
-            -H "User-Agent: GitHub-Hookshot/actions" \
-            -d "$PAYLOAD")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | head -n -1)
-          
-          echo "=== RESPONSE ==="
-          echo "Status: $HTTP_CODE"
-          echo "Body: $BODY"
-          echo "================"
-          
-          if [ "$HTTP_CODE" -eq 200 ]; then
-            echo "✅ Deployment successful!"
-            echo "🐳 Docker Image: ${{ steps.image_info.outputs.latest_image }}"
-          else
-            echo "❌ Deployment failed!"
-            exit 1
-          fi 
+          echo "⚠️  This workflow has been disabled"
+          echo "🔄 Webhook deployment is now handled in ci-cd.yml"
+          echo "✅ This ensures Docker package is built before webhook"
+          echo ""
+          echo "Workflow order in ci-cd.yml:"
+          echo "1. Run Tests"
+          echo "2. Build Application"  
+          echo "3. Build Docker Image"
+          echo "4. Send Webhook (with built package info)" 
